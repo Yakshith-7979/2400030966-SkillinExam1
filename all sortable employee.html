@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sortable Employee Table</title>
+  <style>
+    /* Table styling: borders, alternating rows, hover */
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; padding: 24px; background:#f7fafc; }
+    .card { background:white; border:1px solid #e2e8f0; border-radius:8px; padding:16px; max-width:900px; margin:0 auto; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+    h1 { font-size:18px; margin:0 0 12px; text-align:center; }
+    table { width:100%; border-collapse:collapse; }
+    thead th {
+      text-align:left;
+      padding:10px;
+      border-bottom:2px solid #e2e8f0;
+      cursor:pointer;
+      user-select:none;
+      position:relative;
+      background:#f1f5f9;
+    }
+    thead th .indicator { margin-left:8px; font-size:11px; color:#475569; }
+    tbody td { padding:10px; border-bottom:1px solid #e6eef6; }
+    tbody tr:nth-child(even) { background:#fff; }
+    tbody tr:nth-child(odd)  { background:#fbfdff; }
+    tbody tr:hover { background:#e6f2ff; }
+    .small { font-size:13px; color:#64748b; margin-top:8px; text-align:center; }
+    /* Make headers focusable for keyboard users */
+    thead th:focus { outline:3px solid #c7e0ff; outline-offset:2px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Employee Data — Click any header to sort (toggle asc/desc)</h1>
+
+    <table id="employeeTable" aria-label="Sortable employee table">
+      <thead>
+        <tr>
+          <th data-key="name" tabindex="0">Name <span class="indicator" aria-hidden="true"></span></th>
+          <th data-key="department" tabindex="0">Department <span class="indicator" aria-hidden="true"></span></th>
+          <th data-key="salary" tabindex="0">Salary <span class="indicator" aria-hidden="true"></span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- rows will be rendered here by JS -->
+      </tbody>
+    </table>
+
+    <div class="small">Data is stored in a JS array and re-rendered when sorting.</div>
+  </div>
+
+  <script>
+    // Predefined data array (name, department, salary)
+    const initialData = [
+      { name: "Alice", department: "HR",         salary: 45000 },
+      { name: "Bob",   department: "Engineering",salary: 75000 },
+      { name: "Charlie", department: "Finance",  salary: 55000 },
+      { name: "David", department: "Marketing",  salary: 50000 },
+      { name: "Eve",   department: "Engineering",salary: 72000 },
+      { name: "Frank", department: "HR",         salary: 42000 }
+    ];
+
+    // "State" held in these variables
+    let tableData = [...initialData]; // current sorted/unsorted data
+    let sortConfig = { key: null, direction: 'asc' }; // current sort column & direction
+
+    const tbody = document.querySelector('#employeeTable tbody');
+    const headers = document.querySelectorAll('#employeeTable thead th');
+
+    // Utility to format salary with commas
+    function formatSalary(n) {
+      return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    // Render rows from tableData
+    function render() {
+      tbody.innerHTML = '';
+      tableData.forEach((emp, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(emp.name)}</td>
+          <td>${escapeHtml(emp.department)}</td>
+          <td>${formatSalary(emp.salary)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // update header indicators
+      headers.forEach(h => {
+        const key = h.dataset.key;
+        const ind = h.querySelector('.indicator');
+        if (sortConfig.key === key) {
+          ind.textContent = sortConfig.direction === 'asc' ? '▲' : '▼';
+          ind.setAttribute('aria-label', sortConfig.direction === 'asc' ? 'ascending' : 'descending');
+        } else {
+          ind.textContent = '';
+          ind.removeAttribute('aria-label');
+        }
+      });
+    }
+
+    // Sort handler
+    function handleSort(key) {
+      let direction = 'asc';
+      if (sortConfig.key === key && sortConfig.direction === 'asc') {
+        direction = 'desc';
+      }
+
+      // Create a copy for stable reordering
+      tableData = [...tableData].sort((a, b) => {
+        const va = a[key];
+        const vb = b[key];
+
+        // If sorting salary (number) do numeric compare, else string compare case-insensitive
+        if (typeof va === 'number' && typeof vb === 'number') {
+          return direction === 'asc' ? va - vb : vb - va;
+        } else {
+          const sa = String(va).toLowerCase();
+          const sb = String(vb).toLowerCase();
+          if (sa < sb) return direction === 'asc' ? -1 : 1;
+          if (sa > sb) return direction === 'asc' ? 1 : -1;
+          return 0;
+        }
+      });
+
+      sortConfig = { key, direction };
+      render();
+    }
+
+    // Attach click and keyboard handlers to headers
+    headers.forEach(h => {
+      const key = h.dataset.key;
+      h.addEventListener('click', () => handleSort(key));
+      // allow Enter/Space to activate sorting when focused
+      h.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleSort(key);
+        }
+      });
+    });
+
+    // Simple HTML-escape for safety
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
